@@ -18,12 +18,13 @@ public class Main implements MqttCallback {
 	protected static String MQTT_FROM_USERNAME = System.getenv("MQTT_FROM_USERNAME");
 	protected static String MQTT_FROM_PASSWORD = System.getenv("MQTT_FROM_PASSWORD");
 	protected static String MQTT_FROM_CLIENTID = System.getenv("MQTT_FROM_CLIENTID");
-	protected static String MQTT_FROM_TOPIC = System.getenv("MQTT_FROM_TOPIC");
+	protected static String MQTT_FROM_TOPICS = System.getenv("MQTT_FROM_TOPICS");
 
 	protected static String MQTT_TO_HOST = System.getenv("MQTT_TO_HOST");
 	protected static String MQTT_TO_USERNAME = System.getenv("MQTT_TO_USERNAME");
 	protected static String MQTT_TO_PASSWORD = System.getenv("MQTT_TO_PASSWORD");
 	protected static String MQTT_TO_CLIENTID = System.getenv("MQTT_TO_CLIENTID");
+	protected static Integer MQTT_TO_QOS = Integer.parseInt(System.getenv("MQTT_TO_QOS"));
 
 	public static void main(String[] args) throws Exception {
 		Main main = new Main();
@@ -71,7 +72,10 @@ public class Main implements MqttCallback {
 		brokerFrom = new MqttClient(MQTT_FROM_HOST, MQTT_FROM_CLIENTID, new MemoryPersistence());
 		brokerFrom.setCallback(this);
 		brokerFrom.connect(options);
-		brokerFrom.subscribe(MQTT_FROM_TOPIC, 0);
+
+		String[] topics = MQTT_FROM_TOPICS.split(",");
+		for (int i = 0; i < topics.length; i++)
+			brokerFrom.subscribe(topics[i], 0);
 
 		logger.info("Runninng...");
 	}
@@ -107,11 +111,11 @@ public class Main implements MqttCallback {
 	@Override
 	public void messageArrived(String topic, MqttMessage message) throws Exception {
 
-		if (message.isRetained())
-			logger.info("Pubblish retained message on {}: {}.", topic, message);
-		else
-			logger.trace("Publish message on {}.", topic);
+		logger.info("Pubblish on: {}, retained: {}, qos: {}, duplicate: {}.", topic, message.isRetained(), message.getQos(),
+				message.isDuplicate());
 
+		if (MQTT_TO_QOS >= 0)
+			message.setQos(MQTT_TO_QOS);
 		brokerTo.publish(topic, message);
 
 	}
